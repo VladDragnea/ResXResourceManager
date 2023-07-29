@@ -116,15 +116,15 @@
 
             response.EnsureSuccessStatusCode();
 
-            using (var reader = new StreamReader(await response.Content.ReadAsStreamAsync().ConfigureAwait(false), Encoding.UTF8))
-            {
-                var json = await reader.ReadToEndAsync().ConfigureAwait(false);
-                return JsonConvert.DeserializeObject<Response>(json);
-            }
+#pragma warning disable CA2016 // Forward the 'CancellationToken' parameter to methods => not available in NetFramework
+            using var reader = new StreamReader(await response.Content.ReadAsStreamAsync().ConfigureAwait(false), Encoding.UTF8);
+
+            var json = await reader.ReadToEndAsync().ConfigureAwait(false);
+            return JsonConvert.DeserializeObject<Response>(json);
         }
 
         [DataContract]
-        private class ResponseData
+        private sealed class ResponseData
         {
             [DataMember(Name = "translatedText")]
             public string? TranslatedText
@@ -142,7 +142,7 @@
         }
 
         [DataContract]
-        private class MatchData
+        private sealed class MatchData
         {
             [DataMember(Name = "translation")]
             public string? Translation
@@ -167,7 +167,7 @@
         }
 
         [DataContract]
-        private class Response
+        private sealed class Response
         {
             [DataMember(Name = "responseData")]
             public ResponseData? ResponseData

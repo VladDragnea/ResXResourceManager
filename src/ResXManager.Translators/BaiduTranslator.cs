@@ -26,6 +26,17 @@
     public class BaiduTranslator : TranslatorBase
     {
         private static readonly Uri _uri = new("https://fanyi-api.baidu.com/product/11");
+        private static readonly Dictionary<string, string> _baiduCultureMap = new Dictionary<string, string>
+        {
+            { "ja-JP", "jp"},
+            { "zh-Hant","cht"},
+            { "zh-CHT","cht"},
+            { "zh-TW","cht"},
+            { "zh-HK","cht"},
+            { "zh-MO","cht"},
+            { "zh-Hans","zh"},
+            { "zh-CN","zh"}
+        };
         private static readonly IList<ICredentialItem> _credentialItems = new ICredentialItem[]
         {
             new CredentialItem("AppId", "App Id"),
@@ -124,8 +135,8 @@
                     parameters.AddRange(new[]
                     {
                         "q", q,
-                        "from", translationSession.SourceLanguage.TwoLetterISOLanguageName,
-                        "to", targetCulture.TwoLetterISOLanguageName,
+                        "from", GetCultureLang(translationSession.SourceLanguage),
+                        "to", GetCultureLang(targetCulture),
                         "appid", AppId,
                         "salt", salt,
                         "sign", sign,
@@ -158,12 +169,17 @@
                     }).ConfigureAwait(false);
                 }
             }
-
-
         }
+
+        private static string GetCultureLang(CultureInfo targetCulture)
+        {
+            return _baiduCultureMap.TryGetValue(targetCulture.Name, out var langName) ? langName : targetCulture.TwoLetterISOLanguageName;
+        }
+
         public static string EncryptString(string str)
         {
-#pragma warning disable CA5351
+#pragma warning disable CA1850 // Prefer static 'HashData' method over 'ComputeHash'
+#pragma warning disable CA5351 // Do Not Use Broken Cryptographic Algorithms
             using var md5 = System.Security.Cryptography.MD5.Create();
             var byteOld = Encoding.UTF8.GetBytes(str);
             var byteNew = md5.ComputeHash(byteOld);
@@ -173,7 +189,8 @@
                 sb.Append(value: b.ToString("x2", CultureInfo.CurrentCulture));
             }
             return sb.ToString();
-#pragma warning restore CA5351
+#pragma warning restore CA1850 // Prefer static 'HashData' method over 'ComputeHash'
+#pragma warning restore CA5351 // Do Not Use Broken Cryptographic Algorithms
         }
 
         private static async Task<T> GetHttpResponse<T>(string baseUrl, ICollection<string?> parameters, CancellationToken cancellationToken)
@@ -187,6 +204,7 @@
 
             response.EnsureSuccessStatusCode();
 
+#pragma warning disable CA2016 // Forward the 'CancellationToken' parameter to methods => not available in NetFramework
             using var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
             return JsonConverter<T>(stream) ?? throw new InvalidOperationException("Empty response.");
         }
@@ -199,7 +217,7 @@
         }
 
         [DataContract]
-        private class TranslateResult
+        private sealed class TranslateResult
         {
             [DataMember(Name = "src")]
             public string? Src { get; set; }
@@ -208,7 +226,7 @@
         }
 
         [DataContract]
-        private class BaiduTranslationResponse
+        private sealed class BaiduTranslationResponse
         {
             [DataMember(Name = "error_code")]
             public string? ErrorCode { get; set; }

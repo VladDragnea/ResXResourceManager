@@ -27,7 +27,8 @@
     using Resources = Compatibility.Properties.Resources;
 
     [Export(typeof(IRefactorings))]
-    internal class Refactorings : IRefactorings
+    [Shared]
+    internal sealed class Refactorings : IRefactorings
     {
         private readonly DTE2 _dte;
         private readonly IExportProvider _exportProvider;
@@ -143,8 +144,10 @@
             {
                 if (!_isLastUsedEntityInSameProject || IsInProject(_lastUsedEntity, document))
                 {
-                    entities.Remove(_lastUsedEntity);
-                    entities.Insert(0, _lastUsedEntity);
+                    if (entities.Remove(_lastUsedEntity))
+                    {
+                        entities.Insert(0, _lastUsedEntity);
+                    }
                 }
             }
 
@@ -265,7 +268,7 @@
             return new Selection(textDocument, line, fileCodeModel);
         }
 
-        private class Selection
+        private sealed class Selection
         {
             private readonly TextDocument _textDocument;
 
@@ -366,7 +369,7 @@
             string? LocateString(Selection? selection, bool expandSelection);
         }
 
-        private class GenericParser : IParser
+        private sealed class GenericParser : IParser
         {
             public string? LocateString(Selection? selection, bool expandSelection)
             {
@@ -388,7 +391,7 @@
                 return locator.Locate(@"""") ?? locator.Locate("'") ?? locator.Locate("`");
             }
 
-            private class Locator
+            private sealed class Locator
             {
                 private readonly string _line;
                 private readonly int _column;

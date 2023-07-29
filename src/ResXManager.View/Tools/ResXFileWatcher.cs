@@ -16,10 +16,12 @@
     internal sealed class ResXFileWatcher : FileWatcher, IService
     {
         private readonly ResourceManager _resourceManager;
+        private readonly ITracer _tracer;
 
-        public ResXFileWatcher(ResourceManager resourceManager)
+        public ResXFileWatcher(ResourceManager resourceManager, ITracer tracer)
         {
             _resourceManager = resourceManager;
+            _tracer = tracer;
             _resourceManager.SolutionFolderChanged += ResourceManager_SolutionFolderChanged;
         }
 
@@ -65,12 +67,25 @@
                 if (language.HasChanges)
                     continue;
 
+                var config = _resourceManager.Configuration;
+                if (config.SortFileContentOnSave)
+                {
+                    language.SortNodes(config.ResXSortingComparison, config.DuplicateKeyHandling);
+                }
+
                 var projectFile = language.ProjectFile;
                 var entity = language.Container;
 
-                if (entity.Update(projectFile, out var updatedLanguage))
+                try
                 {
-                    _resourceManager.OnProjectFileSaved(updatedLanguage, projectFile);
+                    if (entity.Update(projectFile, out var updatedLanguage))
+                    {
+                        _resourceManager.OnProjectFileSaved(updatedLanguage, projectFile);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _tracer.TraceError(ex.ToString());
                 }
             }
         }
